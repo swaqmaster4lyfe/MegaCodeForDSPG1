@@ -1,0 +1,342 @@
+/*********************************************************
+Hello anyone reading this code. So this is just sort of code to get my breadboard prototype running, ill be updating it regularly in order to work out any bugs, or if you find any bugs let me know and I can try and sort them out.
+Basically the circuit involves:
+14 potentiometers(final iteration will have 15)
+2 pushbuttons for wavetype. (not included yet) 
+12 pushbuttons as keys.(might up it to 24)
+Also not included yet is a wifi connection that will allow the user to use a GUI to adjust the sound parameters. 
+Im still learning about microcontrollers and coding in general so feel free to trash me for anything thats atrocious so I can learn from it and improve.
+This code was partially taken from the trellisfeather code thats on the adafruit website but was changed to allow the use of keys. 
+Enjoy!
+
+
+Project: MIDI Synthesizer
+Author: John Evans
+Revision: 1.0
+**********************************************************/
+#include <MIDI.h>
+int whichnoteisbeingplayed(int cnote,int csnote,int dnote,int dsnote,int enote,int fnote,int fsnote,int gnote,int gsnote,int anote,int asnote,int bnote);//This function sends the note on messages
+void controlchange(int DcaEnvR, int DcaEnvS, int DcaEnvD, int DcaEnvA, int DcoDetune,int DcoRange,int DcoWrap,int DcfEnvM,int DcfEnvR,int DcfEnvS,int DcfEnvD,int DcfEnfA,int DesRes, int DcfCutoff,int LfoRate);//this function sends midi control change messages
+MIDI_CREATE_DEFAULT_INSTANCE();//idk something to do with the midi library
+//below are the global pin assignments for the pushbuttons and potentiometers
+int button1=52;//assigns button1 as D52 (used for c)
+int button2=51;//assigns button2 as D51 (used for c#)
+int button3=50;//assigns button3 as D50 (used for d)
+int button4=49;//assigns button4 as D49 (used for d#)
+int button5=48;//assigns button5 as D48 (used for e)
+int button6=47;//assigns button6 as D47 (used for f)
+int button7=46;//assigns button7 as D46 (used for f#)
+int button8=45;//assigns button8 as D45 (used for g)
+int button9=44;//assigns button9 as D44 (used for g#)
+int button10=43;//assigns button10 as D43 (used for a)
+int button11=42;//assigns button11 as D42 (used for a#)
+int button12=41;//assigns button12 as D41 (used for b)
+int DcaEnvReleasePin = A0;//assigns the pot used for DCA envelope Release to A0
+int DcaEnvSustainPin = A1;//assigns the pot used for DCA envelope Sustain to A1
+int DcaEnvDecayPin = A2;//Assigns the pot used for DCA envelope decay to A2
+int DcaEnvAttackPin = A3;//Assigns the pot used for DCA envelope attack to A3
+int DcoDetunePin = A4;//Assigns the pot used for the DCO detune to A4
+int DcoRangePin = A5;//Assigns the pot used for the DCO range to A5
+int DcoWrapPin = A6;//Assigns the pot used for the DCO wrap to A6
+int DcfEnvModPin = A7;//Assigns the pot used for DCF envelope modulation to A7
+int DcfEnvReleasePin = A8;//Assigns the pot used for DCF envelope release to A8
+int DcfEnvSustainPin = A9;//Assigns the pot used for DCF envelope sustain to A9
+int DcfEnvDecayPin = A10;//Assigns the pot used for DCF envelope decay to A10
+int DcfResonancePin = A11;//Assigns the pot used for DCF Resonance to A11
+int DcfCutoffPin = A12;//Assigns the pot used for DCF cutoff to A12
+int LfoRatePin = A13;//Assigns the pot used for LFO rate to A13 
+int DcfEnfAttackPin = A14;//Assigns the pot used for DCF envelope Attack to A14
+int notearray[12] = {48,49,50,51,52,53,54,55,56,57,58,59};//This is a global array used for storing MIDI note values. 
+void setup() {
+  Serial.begin(115200);//creates a serial instance with a baud of 115200
+  //Below is the code assigning the digital pins to be Inputs
+  pinMode(button1, INPUT);
+  pinMode(button2, INPUT);
+  pinMode(button3, INPUT);
+  pinMode(button4, INPUT);
+  pinMode(button5, INPUT);
+  pinMode(button6, INPUT);
+  pinMode(button7, INPUT);
+  pinMode(button8, INPUT);
+  pinMode(button9, INPUT);
+  pinMode(button10, INPUT);
+  pinMode(button11, INPUT);
+  pinMode(button12, INPUT);
+  
+  MIDI.begin(1);//begins the midi serial communication using channel 1
+
+  //All of thses intitialize the Midi CC codes(CC,Value,Channel)
+  MIDI.sendControlChange(7,30,1);//Initializes Volume to 30
+  MIDI.sendControlChange(1,0,1);//Initializes LFO Filter Modulation to 0
+  MIDI.sendControlChange(20,0,1);//LFO waveform 0-63 sine, 64-127 S/H (this doesnt change yet)
+  MIDI.sendControlChange(16,0,1);//Intializes LFO Rate to 0
+  MIDI.sendControlChange(20,0,1);//Initializes LDO waveform to triangle wave (this wont change yet)
+  MIDI.sendControlChange(74,0,1);//Initializes DCF Cutoff to 0
+  MIDI.sendControlChange(71,0,1);//Intializes DCF Resonance to 0
+  MIDI.sendControlChange(82,0,1);//Initializes DCF Envelope Attack to 0
+  MIDI.sendControlChange(83,0,1);//Initializes DCF Envelope Decay to 0
+  MIDI.sendControlChange(28,0,1);//Initializes DCF Envelope Sustain to 0
+  MIDI.sendControlChange(29,0,1);//Initializes DCF Envelope Release to 0
+  MIDI.sendControlChange(81,0,1);//Initializes DCF Envelope Modulation to 0
+  MIDI.sendControlChange(76,0,1);//Initializes DCO waveform to triangle (this doesnt change yet)
+  MIDI.sendControlChange(4,0,1);//Initializes DCO Wrap to 0
+  MIDI.sendControlChange(21,0,1);//Initializes DCO range to 0
+  MIDI.sendControlChange(93,0,1);//Initializes DCO Detune to 0
+  MIDI.sendControlChange(73,0,1);//Initializes DCA Envelope Attack to 0
+  MIDI.sendControlChange(75,0,1);//Initializes DCA Envelope Decay to 0
+  MIDI.sendControlChange(31,0,1);//Initializes DCA Envelope Sustain to 0
+  MIDI.sendControlChange(72,0,1);//Initializes DCA Envelope Release to 0
+}
+void loop() {
+//This code will read the state of the pushbuttons and store it in an int named after the corresponding note
+int cnote = digitalRead(button1);
+int csnote = digitalRead(button2);
+int dnote = digitalRead(button3);
+int dsnote = digitalRead(button4);
+int enote = digitalRead(button5);
+int fnote = digitalRead(button6);
+int fsnote = digitalRead(button7);
+int gnote = digitalRead(button8);
+int gsnote = digitalRead(button9);
+int anote = digitalRead(button10);
+int asnote = digitalRead(button11);
+int bnote = digitalRead(button12);
+
+//The code below will read the pushbutton and then map it to a value between 0 and 127 so that it can be sent to the DSP-Chip
+int DcaEnvR = analogRead(DcaEnvReleasePin);
+int newDcaEnvR = map(DcaEnvR, 0, 1023, 0, 127);
+
+int DcaEnvS = analogRead(DcaEnvSustainPin);
+int newDcaEnvS = map(DcaEnvS, 0, 1023, 0, 127);
+
+int DcaEnvD = analogRead(DcaEnvDecayPin);
+int newDcaEnvD = map(DcaEnvD, 0, 1023, 0, 127);
+
+int DcaEnvA = analogRead(DcaEnvAttackPin);
+int newDcaEnvA = map(DcaEnvA, 0, 1023, 0, 127);
+
+int DcoDetune = analogRead(DcoDetunePin);
+int newDcoDetune = map(DcoDetune, 0, 1023, 0, 127);
+
+int DcoRange = analogRead(DcoRangePin);
+int newDcoRange = map(DcoRange, 0, 1023, 0, 127);
+
+int DcoWrap = analogRead(DcoWrapPin);
+int newDcoWrap = map(DcoWrap,0,1023,0,127);
+
+int DcfEnvM = analogRead(DcfEnvModPin);
+int newDcfEnvM = map(DcfEnvM,0,1023,0,127);
+
+int DcfEnvR = analogRead(DcfEnvReleasePin); 
+int newDcfEnvR = map(DcfEnvR,0,1023,0,127);
+
+int DcfEnvS = analogRead(DcfEnvSustainPin);
+int newDcfEnvS = map(DcfEnvS,0,1023,0,127);
+
+int DcfEnvD = analogRead(DcfEnvDecayPin);
+int newDcfEnvD = map(DcfEnvD,0,1023,0,127);
+
+int DcfEnfA = analogRead(DcfEnfAttackPin);
+int newDcfEnfA = map(DcfEnfA,0,1023,0,127);
+
+int DcfRes = analogRead(DcfResonancePin);
+int newDcfRes = map(DcfRes,0,1023,0,127);
+
+int DcfCutoff = analogRead(DcfCutoffPin);
+int newDcfCutoff = map(DcfCutoff,0,1023,0,127);
+
+int LfoRate = analogRead(LfoRatePin); 
+int newLfoRate = map(LfoRate,0,1023,0,127);
+
+whichnoteisbeingplayed(cnote,csnote,dnote,dsnote,enote,fnote,fsnote,gnote,gsnote,anote,asnote,bnote);//Calls the function to play notes
+controlchange(newDcaEnvR,newDcaEnvS,newDcaEnvD,newDcaEnvA,newDcoDetune,newDcoRange,newDcoWrap,newDcfEnvM,newDcfEnvR,newDcfEnvS,newDcfEnvD,newDcfEnfA,newDcfRes,newDcfCutoff,newLfoRate);//Calls the function to make control changes
+}
+int whichnoteisbeingplayed(int cnote,int csnote,int dnote,int dsnote,int enote,int fnote,int fsnote,int gnote,int gsnote,int anote,int asnote,int bnote)
+{
+  //The code below will check if a note is high and if it is it will send a note on message to the chip with the corresponding value in the note array at a velocity of 127
+  if(cnote==1)
+  {
+     MIDI.sendNoteOn(notearray[0],127,1);
+  }
+    if(csnote==1)
+  {
+     MIDI.sendNoteOn(notearray[1],127,1);
+  }
+    if(dnote==1)
+  {
+     MIDI.sendNoteOn(notearray[2],127,1);
+  }
+    if(dsnote==1)
+  {
+     MIDI.sendNoteOn(notearray[3],127,1);
+  }
+    if(enote==1)
+  {
+     MIDI.sendNoteOn(notearray[4],127,1);
+  }
+    if(fnote==1)
+  {
+     MIDI.sendNoteOn(notearray[5],127,1);
+  }
+    if(fsnote==1)
+  {
+     MIDI.sendNoteOn(notearray[6],127,1);
+  }
+    if(gnote==1)
+  {
+     MIDI.sendNoteOn(notearray[7],127,1);
+  }
+    if(gsnote==1)
+  {
+     MIDI.sendNoteOn(notearray[8],127,1);
+  }
+    if(anote==1)
+  {
+     MIDI.sendNoteOn(notearray[9],127,1);
+  }
+    if(asnote==1)
+  {
+     MIDI.sendNoteOn(notearray[10],127,1);
+  }
+    if(bnote==1)
+  {
+     MIDI.sendNoteOn(notearray[11],127,1);
+  }
+ 
+  //The code below is essentially the reverse in that it will check if the button is low and turn that corresponding note off. 
+  if(cnote==0)
+  {
+     MIDI.sendNoteOff(notearray[0],127,1);
+  }
+    if(csnote==0)
+  {
+     MIDI.sendNoteOff(notearray[1],127,1);
+  }
+    if(dnote==0)
+  {
+     MIDI.sendNoteOff(notearray[2],127,1);
+  }
+    if(dsnote==0)
+  {
+     MIDI.sendNoteOff(notearray[3],127,1);
+  }
+    if(enote==0)
+  {
+     MIDI.sendNoteOff(notearray[4],127,1);
+  }
+    if(fnote==0)
+  {
+     MIDI.sendNoteOff(notearray[5],127,1);
+  }
+    if(fsnote==0)
+  {
+     MIDI.sendNoteOff(notearray[6],127,1);
+  }
+    if(gnote==0)
+  {
+     MIDI.sendNoteOff(notearray[7],127,1);
+  }
+    if(gsnote==0)
+  {
+     MIDI.sendNoteOff(notearray[8],127,1);
+  }
+    if(anote==0)
+  {
+     MIDI.sendNoteOff(notearray[9],127,1);
+  }
+    if(asnote==0)
+  {
+     MIDI.sendNoteOff(notearray[10],127,1);
+  }
+    if(bnote==0)
+  {
+     MIDI.sendNoteOff(notearray[11],127,1);
+  }
+}
+ void controlchange(int DcaEnvR, int DcaEnvS, int DcaEnvD, int DcaEnvA, int DcoDetune,int DcoRange,int DcoWrap,int DcfEnvM,int DcfEnvR,int DcfEnvS,int DcfEnvD,int DcfEnfA,int DcfRes,int DcfCutoff,int LfoRate)
+{
+  //The ints below are buffers to store the old values so that it can be determined if a change was made
+  int DcaEnvROld = 0;
+  int DcaEnvSOld = 0;
+  int DcaEnvDOld = 0;
+  int DcaEnvAOld = 0;
+  int DcoDetuneOld = 0;
+  int DcoRangeOld = 0;
+  int DcoWrapOld = 0;
+  int DcfEnvMOld = 0;
+  int DcfEnvROld = 0;
+  int DcfEnvSOld = 0;
+  int DcfEnvDOld = 0;
+  int DcfEnfAOld = 0;
+  int DcfResOld = 0;
+  int DcfCutoffOld = 0;
+  int LfoRateOld = 0;
+
+  //All of these if statements work in the same way which is:
+  //1.Checks if there is a change between the old value and the new value being read
+  //2.If the values differ a control change is sent with the new value being passed
+  //3.stores the new value in the buffer 
+  if(DcaEnvR != DcaEnvROld){
+    MIDI.sendControlChange(72,DcaEnvR, 1);  
+    DcaEnvROld = DcaEnvR;
+  }
+  if(DcaEnvS != DcaEnvSOld){
+    MIDI.sendControlChange(31,DcaEnvS, 1);  
+    DcaEnvSOld = DcaEnvS;
+  }
+  if(DcaEnvD != DcaEnvDOld){
+    MIDI.sendControlChange(75,DcaEnvD, 1);  
+    DcaEnvDOld = DcaEnvD;
+  }
+  if(DcaEnvA != DcaEnvAOld){
+    MIDI.sendControlChange(73,DcaEnvA, 1);  
+    DcaEnvAOld = DcaEnvA;
+  }
+  if(DcoDetune != DcoDetuneOld){
+    MIDI.sendControlChange(93,DcoDetune, 1);  
+    DcoDetuneOld = DcoDetune;
+  }
+  if(DcoRange != DcoRangeOld){
+    MIDI.sendControlChange(21,DcoRange, 1);  
+    DcoRangeOld = DcoRange;
+  }
+
+  if(DcoWrap != DcoWrapOld){
+    MIDI.sendControlChange(4,DcoWrap, 1);  
+    DcoWrapOld = DcoWrap;
+  }
+    if(DcfEnvM != DcfEnvMOld){
+    MIDI.sendControlChange(81,DcfEnvM, 1);  
+    DcfEnvMOld = DcfEnvM;
+  }
+    if(DcfEnvR != DcfEnvROld){
+    MIDI.sendControlChange(29,DcfEnvR, 1);  
+    DcfEnvROld = DcfEnvR;
+  }
+    if(DcfEnvS != DcfEnvSOld){
+    MIDI.sendControlChange(28,DcfEnvS, 1);  
+    DcfEnvSOld = DcfEnvS;
+  }
+      if(DcfEnvD != DcfEnvDOld){
+    MIDI.sendControlChange(83,DcfEnvD, 1);  
+    DcfEnvDOld = DcfEnvD;
+  }
+      if(DcfEnfA != DcfEnfAOld){
+    MIDI.sendControlChange(82,DcfEnfA, 1);  
+    DcfEnfAOld = DcfEnfA;
+  }
+      if(DcfRes != DcfResOld){
+    MIDI.sendControlChange(71,DcfRes, 1);  
+    DcfResOld = DcfRes;
+  }
+      if(DcfCutoff != DcfCutoffOld){
+    MIDI.sendControlChange(74,DcfCutoff, 1);  
+    DcfCutoffOld = DcfCutoff;
+  }
+      if(LfoRate != LfoRateOld){
+    MIDI.sendControlChange(16,LfoRate, 1);  
+    LfoRateOld = LfoRate;
+  }
+
+
+}
